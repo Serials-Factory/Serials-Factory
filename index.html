@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serials🏭factory</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #002434;
+    }
+    .card {
+      background-color: #012a3c;
+      border: none;
+      margin: 15px 0;
+      border-radius: 8px;
+    }
+    .card-title, .card-text, .btn {
+      color: rgb(211, 211, 211);
+    }
+    .wishlist-btn.active {
+      color: #fff;
+      background-color: #28a745;
+    }
+    .card img {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+    }
+    .wishlist-btn {
+      transition: all 0.3s;
+    }
+    h1 {
+      color: rgb(211, 211, 211);
+    }
+    header .btn-light {
+      border-radius: 0.375rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <h1 class="text-center mt-5 flex-grow-1">Serials🏭factory - ми повернулись. Тепер з реєстрацією, банківськими картками і паспортами🦾</h1>
+      <div class="d-flex gap-3">
+        {% if username %}
+          <div class="d-flex align-items-center gap-3">
+            <img src="{{ avatar_url }}" alt="Avatar" class="rounded-circle" style="width: 50px; height: 50px;">
+            <span class="text-light">{{ username }}</span>
+            <a href="/wishlist" class="btn btn-outline-success">📋 Обрані серіали</a>
+            <a href="/logout" class="btn btn-outline-light">Вийти</a>
+          </div>
+        {% else %}
+          <a href="/templates/register.html" class="btn btn-outline-light">Зареєструватися</a>
+          <a href="/templates/auth.html" class="btn btn-light">Увійти</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex justify-content-center mt-3">
+      <a href="/random-movie" class="btn btn-light ms-2">Рандомний фільм</a>
+    </div>
+    <div class="d-flex justify-content-center mt-3">
+      <form action="/search" method="get" class="d-flex" style="max-width: 500px; width: 100%;">
+        <input type="text" name="query" class="form-control" placeholder="Пошук серіалу..." aria-label="Пошук фільмів">
+        <button type="submit" class="btn btn-light ms-2">Пошук</button>
+      </form>
+    </div>
+  </header>
+  <main class="container py-5">
+    <div class="row">
+        {% for series in all_series %}
+        <div class="col-md-3">
+            <a href="/templates/{{ series.series_name }}.html" class="card-link">
+                <div class="card text-center">
+                    <img src="/images/{{ series.image }}" class="card-img-top" alt="{{ series.series_name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ series.series_name }}</h5>
+                        <p class="card-text">
+                            <strong>Сезонів:</strong> {{ series.seasons }}<br>
+                            <strong>Всього серій:</strong> {{ series.episodes }}<br>
+                            <strong>Роки:</strong> {{ series.years }}
+                        </p>
+                        <button 
+                            class="btn btn-outline-danger wishlist-btn {% if series.series_name in user_wishlist %}active{% endif %}" 
+                            data-series="{{ series.series_name }}">
+                            {% if series.series_name in user_wishlist %}✅{% else %}❤️{% endif %}
+                        </button>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+  </main>
+
+  <footer class="container-fluid bg-dark text-light py-4 mt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h5>Контакти</h5>
+          <ul class="list-unstyled">
+            <li>Email: support@serialsfactory.com</li>
+            <li>Телефон: +38 (098) 123-45-67</li>
+            <li>Telegram: @serialsfactory</li>
+          </ul>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <h5>Підтримайте наш проєкт</h5>
+          <p>Донатьте авторам)</p>
+          <a href="https://www.donationalerts.com/r/serialsfactory" class="btn btn-outline-light">Задонатити</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    document.querySelectorAll('.wishlist-btn').forEach(button => {
+      button.addEventListener('click', async function() {
+          console.log("Кнопка натиснута");
+          const response = await fetch('/auth/check', { method: 'GET' });
+          const authStatus = await response.json();
+
+          if (!authStatus.authenticated) {
+              console.log("Користувач не авторизований");
+              window.location.href = '/auth';
+              return;
+          }
+
+          console.log("Користувач авторизований");
+          const seriesId = this.getAttribute('data-series');
+          const isAdding = !this.classList.contains('active');
+          const endpoint = isAdding ? '/wishlist/add' : '/wishlist/remove';
+
+          fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ series_name: seriesId })
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log(data); 
+              if (data.status === "added" && isAdding) {
+                  this.classList.add('active');
+                  this.textContent = "✅";
+              } else if (data.status === "removed" && !isAdding) {
+                  this.classList.remove('active');
+                  this.textContent = "❤️";
+              }
+          })
+          .catch(error => {
+              console.error('Помилка:', error);
+              alert('Не вдалося оновити стан кнопки.');
+          });
+      });
+  });
+  </script>
+</body>
+</html>
